@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShortsGen - Free YouTube to Shorts Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f9fafb;
+        }
+        
+        .hero-gradient {
+            background: linear-gradient(135deg, #4338ca 0%, #4f46e5 50%, #6366f1 100%);
+        }
+        
+        .clip-card {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+        
+        .clip-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .video-container {
+            position: relative;
+            padding-bottom: 177.78%; /* 9:16 aspect ratio */
+            height: 0;
+            overflow: hidden;
+            background: #000;
+        }
+        
+        .video-container iframe,
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .play-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .play-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .processing-bar {
+            height: 6px;
+            background-color: #e5e7eb;
+            overflow: hidden;
+        }
+        
+        .processing-fill {
+            height: 100%;
+            background-color: #4f46e5;
+            width: 0%;
+            transition: width 2s ease-in-out;
+        }
+        
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 3px;
+            background: #e5e7eb;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            box-shadow: 0 0 2px rgba(0,0,0,0.2);
+        }
+        
+        /* Tooltip styles */
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #374151;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 12px;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="hero-gradient text-white">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-cut text-indigo-600 text-xl"></i>
+                    </div>
+                    <h1 class="text-2xl font-bold">ShortsGen</h1>
+                </div>
+                <nav class="hidden md:block">
+                    <ul class="flex space-x-8">
+                        <li><a href="#how-it-works" class="hover:opacity-80 transition">How It Works</a></li>
+                        <li><a href="#features" class="hover:opacity-80 transition">Features</a></li>
+                        <li><a href="#faq" class="hover:opacity-80 transition">FAQ</a></li>
+                    </ul>
+                </nav>
+                <button class="bg-white text-indigo-600 px-4 py-2 rounded-lg font-medium hover:bg-indigo-50 transition flex items-center">
+                    <i class="fas fa-user mr-2"></i> Sign In
+                </button>
+            </div>
+            
+            <div class="mt-16 pb-20 text-center">
+                <h2 class="text-4xl font-bold mb-4">Convert Any YouTube Video to Shorts Format</h2>
+                <p class="text-xl opacity-90 max-w-2xl mx-auto mb-8">Free, fast, and easy-to-use tool to create engaging short videos for TikTok, Instagram Reels, and YouTube Shorts.</p>
+                
+                <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+                    <div class="p-6">
+                        <div class="flex flex-col md:flex-row gap-4">
+                            <input type="text" id="youtube-url" placeholder="Paste YouTube video URL here..." 
+                                   class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
+                            <button id="convert-btn" class="bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition flex items-center justify-center">
+                                <i class="fas fa-cut mr-2"></i> Convert Now
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Example: https://www.youtube.com/watch?v=dQw4w9WgXcQ</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Video Processing Section -->
+    <section id="processing-section" class="container mx-auto px-4 py-12 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6 max-w-4xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-8">
+                <!-- Source Video -->
+                <div class="md:w-1/2">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Original Video</h3>
+                    <div class="video-container mb-4">
+                        <img src="https://placehold.co/600x1067" alt="YouTube video placeholder - shows sample frame from the video being converted" id="source-video-preview"/>
+                    </div>
+                    <div class="text-sm text-gray-600 mb-4">
+                        <span id="video-title">Loading video information...</span>
+                    </div>
+                </div>
+                
+                <!-- Processing Status -->
+                <div class="md:w-1/2">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Processing</h3>
+                    <div class="bg-gray-50 rounded-lg p-6 h-full">
+                        <div class="flex items-center mb-4">
+                            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mr-4">
+                                <i class="fas fa-cog text-indigo-600 text-xl animate-spin"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-gray-800" id="status-text">Analyzing video...</h4>
+                                <p class="text-sm text-gray-500">This usually takes less than 30 seconds</p>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <div class="processing-bar rounded-full mb-2">
+                                <div class="processing-fill rounded-full" id="progress-bar"></div>
+                            </div>
+                            <div class="flex justify-between text-sm text-gray-500">
+                                <span id="progress-text">0%</span>
+                                <span>Almost there</span>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                    <i class="fas fa-check text-green-600 text-sm"></i>
+                                </div>
+                                <span class="text-sm" id="step-1">Video downloaded</span>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <i class="fas fa-spinner text-gray-500 text-sm animate-spin" id="step-2-icon"></i>
+                                </div>
+                                <span class="text-sm text-gray-500" id="step-2">Analyzing scenes...</span>
+                            </div>
+                            
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                                    <span class="text-gray-500 text-sm" id="step-3-icon">3</span>
+                                </div>
+                                <span class="text-sm text-gray-500" id="step-3">Waiting to generate shorts</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Result Section -->
+    <section id="result-section" class="container mx-auto px-4 py-12 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-2xl font-bold text-gray-800">Your Generated Shorts</h2>
+                <div class="flex items-center space-x-4">
+                    <button class="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition flex items-center">
+                        <i class="fas fa-redo mr-2"></i> Generate More
+                    </button>
+                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center">
+                        <i class="fas fa-download mr-2"></i> Download All
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Short 1 -->
+                <div class="clip-card bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="video-container relative">
+                        <img src="https://placehold.co/600x1067" alt="Generated short clip - exciting moment from the middle of the video with text overlay"/>
+                        <div class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
+                            <button class="play-btn w-16 h-16 bg-white bg-opacity-80 rounded-full flex items-center justify-center">
+                                <i class="fas fa-play text-indigo-600 text-2xl"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                            0:58
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold mb-2 text-gray-800">Highlight Moment #1</h3>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>9:16 • 720p</span>
+                            <span>58 sec</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 border border-gray-300 px-3 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center tooltip">
+                                <i class="fas fa-edit mr-1"></i>
+                                <span>Edit</span>
+                                <span class="tooltiptext">Adjust start/end points</span>
+                            </button>
+                            <button class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center tooltip">
+                                <i class="fas fa-download mr-1"></i>
+                                <span>Download</span>
+                                <span class="tooltiptext">Save as MP4</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Short 2 -->
+                <div class="clip-card bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="video-container relative">
+                        <img src="https://placehold.co/600x1067" alt="Generated short clip - impactful scene with highlighted text captions overlay"/>
+                        <div class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
+                            <button class="play-btn w-16 h-16 bg-white bg-opacity-80 rounded-full flex items-center justify-center">
+                                <i class="fas fa-play text-indigo-600 text-2xl"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                            0:45
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold mb-2 text-gray-800">Key Scene #2</h3>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>9:16 • 1080p</span>
+                            <span>45 sec</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 border border-gray-300 px-3 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center">
+                                <i class="fas fa-edit mr-1"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center">
+                                <i class="fas fa-download mr-1"></i>
+                                <span>Download</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Short 3 -->
+                <div class="clip-card bg-white border border-gray-200 rounded-xl overflow-hidden">
+                    <div class="video-container relative">
+                        <img src="https://placehold.co/600x1067" alt="Generated short clip - emotional moment with background music visualization"/>
+                        <div class="absolute top-0 left-0 right-0 bottom-0 flex items-center justify-center">
+                            <button class="play-btn w-16 h-16 bg-white bg-opacity-80 rounded-full flex items-center justify-center">
+                                <i class="fas fa-play text-indigo-600 text-2xl"></i>
+                            </button>
+                        </div>
+                        <div class="absolute bottom-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-sm">
+                            1:02
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold mb-2 text-gray-800">Best Moment #3</h3>
+                        <div class="flex justify-between text-sm text-gray-500 mb-4">
+                            <span>9:16 • 1080p</span>
+                            <span>62 sec</span>
+                        </div>
+                        <div class="flex space-x-2">
+                            <button class="flex-1 border border-gray-300 px-3 py-2 rounded-lg hover:bg-gray-50 transition flex items-center justify-center">
+                                <i class="fas fa-edit mr-1"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button class="flex-1 bg-indigo-600 text-white px-3 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center">
+                                <i class="fas fa-download mr-1"></i>
+                                <span>Download</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Editor Section -->
+    <section id="editor-section" class="container mx-auto px-4 py-12 hidden">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-2xl font-bold mb-8 text-gray-800">Edit Your Short</h2>
+            
+            <div class="flex flex-col lg:flex-row gap-8">
+                <!-- Video Preview -->
+                <div class="lg:w-2/3">
+                    <div class="video-container mb-4">
+                        <img src="https://placehold.co/600x1067" alt="Editable short clip - current preview with timeline markers visible"/>
+                    </div>
+                    
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center space-x-4">
+                            <button class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition">
+                                <i class="fas fa-play text-gray-700"></i>
+                            </button>
+                            <span id="current-time">0:00</span>
+                            <span>/</span>
+                            <span id="total-time">1:00</span>
+                        </div>
+                        
+                        <div class="flex items-center space-x-2">
+                            <button class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition tooltip">
+                                <i class="fas fa-volume-up text-gray-700 text-sm"></i>
+                                <span class="tooltiptext">Adjust volume</span>
+                            </button>
+                            <button class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 transition tooltip">
+                                <i class="fas fa-cog text-gray-700 text-sm"></i>
+                                <span class="tooltiptext">Settings</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <div class="h-2 bg-gray-200 rounded-full mb-2">
+                            <div class="h-full bg-indigo-600 rounded-full" style="width: 30%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs text-gray-500">
+                            <span>0:00</span>
+                            <span>0:30</span>
+                            <span>1:00</span>
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Time</label>
+                            <div class="flex items-center">
+                                <input type="range" min="0" max="60" value="0" class="mr-2">
+                                <span class="text-sm">0:00</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Time</label>
+                            <div class="flex items-center">
+                                <input type="range" min="0" max="60" value="60" class="mr-2">
+                                <span class="text-sm">1:00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end space-x-4">
+                        <button class="border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition">Cancel</button>
+                        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">Apply Changes</button>
+                    </div>
+                </div>
+                
+                <!-- Editing Tools -->
+                <div class="lg:w-1/3">
+                    <div class="bg-gray-50 rounded-xl p-6">
+                        <h3 class="font-bold text-lg mb-4 text-gray-800">Editing Tools</h3>
+                        
+                        <div class="space-y-4">
+                            <!-- Aspect Ratio -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Aspect Ratio</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button class="py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm">16:9</button>
+                                    <button class="py-2 border border-indigo-600 bg-indigo-50 rounded hover:bg-indigo-100 transition text-sm font-medium">9:16</button>
+                                    <button class="py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm">1:1</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Captions -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Captions</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm">
+                                    <option>None</option>
+                                    <option selected>Auto-generate</option>
+                                    <option>Add manually</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Music -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Background Music</label>
+                                <select class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-sm">
+                                    <option selected>None</option>
+                                    <option>Trending</option>
+                                    <option>Upbeat</option>
+                                    <option>Chill</option>
+                                    <option>Epic</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Filters -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Filters</label>
+                                <div class="grid grid-cols-3 gap-2">
+                                    <button class="py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm">None</button>
+                                    <button class="py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm">Vibrant</button>
+                                    <button class="py-2 border border-gray-300 rounded hover:bg-gray-100 transition text-sm">Cinematic</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Trim -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Trim Video</label>
+                                <div class="flex items-center justify-between text-sm text-gray-500 mb-1">
+                                    <span>Start: 0:05</span>
+                                    <span>End: 0:55</span>
+                                </div>
+                                <input type="range" min="0" max="60" value="5" class="w-full mb-1">
+                                <input type="range" min="0" max="60" value="55" class="w-full">
+                            </div>
+                            
+                            <!-- Export Button -->
+                            <button class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition mt-4 flex items-center justify-center">
+                                <i class="fas fa-download mr-2"></i>
+                                Export Short
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="bg-gray-50 py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">How It Works</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <!-- Step 1 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-xl">1</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Paste YouTube URL</h3>
+                    <p class="text-gray-600">Copy and paste the link of any YouTube video you want to convert into shorts format.</p>
+                </div>
+                
+                <!-- Step 2 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-xl">2</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">AI Analyzes Video</h3>
+                    <p class="text-gray-600">Our system automatically scans the video to find the most engaging moments.</p>
+                </div>
+                
+                <!-- Step 3 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition text-center">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full mx-auto mb-4 flex items-center justify-center">
+                        <span class="text-indigo-600 font-bold text-xl">3</span>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">Download Shorts</h3>
+                    <p class="text-gray-600">Get multiple high-quality shorts ready to post on TikTok, Instagram, or YouTube.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-16">
+        <div class="container mx-auto px-4">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">Why Choose Our Converter</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Feature 1 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-bolt text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Lightning Fast</h3>
+                    <p class="text-gray-600">Convert videos in seconds, not hours. Our optimized processing makes it the fastest converter available.</p>
+                </div>
+                
+                <!-- Feature 2 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-lock text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">100% Free</h3>
+                    <p class="text-gray-600">No hidden fees, no watermarks, no subscriptions. Enjoy unlimited conversions completely free.</p>
+                </div>
+                
+                <!-- Feature 3 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-magic text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Smart AI</h3>
+                    <p class="text-gray-600">Our AI automatically finds the most engaging moments to create viral-worthy shorts.</p>
+                </div>
+                
+                <!-- Feature 4 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-mobile-alt text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Mobile Optimized</h3>
+                    <p class="text-gray-600">All shorts are automatically formatted for perfect display on TikTok, Instagram, and YouTube.</p>
+                </div>
+                
+                <!-- Feature 5 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-cloud-download-alt text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">No Installation</h3>
+                    <p class="text-gray-600">Works directly in your browser. No need to download or install any software.</p>
+                </div>
+                
+                <!-- Feature 6 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg mb-4 flex items-center justify-center">
+                        <i class="fas fa-shield-alt text-indigo-600 text-xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Privacy Focused</h3>
+                    <p class="text-gray-600">We don't store your videos after processing. Your content remains yours alone.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="bg-gray-50 py-16">
+        <div class="container mx-auto px-4 max-w-3xl">
+            <h2 class="text-3xl font-bold text-center mb-12 text-gray-800">Frequently Asked Questions</h2>
+            
+            <div class="space-y-4">
+                <!-- FAQ 1 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <button class="flex justify-between items-center w-full text-left">
+                        <h3 class="font-bold text-gray-800">Is this really free to use?</h3>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform transform"></i>
+                    </button>
+                    <p class="mt-2 text-gray-600 hidden">Yes, our YouTube to Shorts converter is completely free to use with no hidden charges. You can convert as many videos as you want without any limitations or watermarks.</p>
+                </div>
+                
+                <!-- FAQ 2 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <button class="flex justify-between items-center w-full text-left">
+                        <h3 class="font-bold text-gray-800">What video formats are supported?</h3>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform transform"></i>
+                    </button>
+                    <p class="mt-2 text-gray-600 hidden">Our converter works with all standard video formats including MP4, MOV, AVI, and more. The output is always in high-quality MP4 format optimized for social media.</p>
+                </div>
+                
+                <!-- FAQ 3 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <button class="flex justify-between items-center w-full text-left">
+                        <h3 class="font-bold text-gray-800">How long does the conversion take?</h3>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform transform"></i>
+                    </button>
+                    <p class="mt-2 text-gray-600 hidden">For most videos, the conversion process takes less than 30 seconds. The exact time depends on the length and quality of your original video and your internet connection speed.</p>
+                </div>
+                
+                <!-- FAQ 4 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <button class="flex justify-between items-center w-full text-left">
+                        <h3 class="font-bold text-gray-800">Can I edit the shorts after generating them?</h3>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform transform"></i>
+                    </button>
+                    <p class="mt-2 text-gray-600 hidden">Yes! Our editor allows you to fine-tune each short before downloading. You can adjust the start/end points, add captions, change the aspect ratio, and more.</p>
+                </div>
+                
+                <!-- FAQ 5 -->
+                <div class="bg-white p-6 rounded-lg shadow-sm">
+                    <button class="flex justify-between items-center w-full text-left">
+                        <h3 class="font-bold text-gray-800">Is there a limit to video length?</h3>
+                        <i class="fas fa-chevron-down text-gray-500 transition-transform transform"></i>
+                    </button>
+                    <p class="mt-2 text-gray-600 hidden">You can convert videos of any length, but our AI will automatically select the most engaging 60-second segments. You can manually adjust these selections in the editor.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="bg-indigo-700 text-white py-16">
+        <div class="container mx-auto px-4 text-center">
+            <h2 class="text-3xl font-bold mb-4">Ready to Create Amazing Shorts?</h2>
+            <p class="text-xl opacity-90 mb-8 max-w-2xl mx-auto">Join thousands of creators who use our free tool to grow their audience on TikTok, Instagram, and YouTube Shorts.</p>
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-xl overflow-hidden">
+                <div class="p-6">
+                    <div class="flex">
+                        <input type="text" placeholder="Paste YouTube video URL here..." 
+                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800">
+                        <button class="ml-2 bg-indigo-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-indigo-700 transition">
+                            <i class="fas fa-cut"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <div class="w-10 h-10 bg-white rounded-lg flex items-center justify-center mr-3">
+                        <i class="fas fa-cut text-indigo-600 text-xl"></i>
+                    </div>
+                    <h2 class="text-xl font-bold">ShortsGen</h2>
+                </div>
+                
+                <div class="flex space-x-6">
+                    <a href="#" class="hover:text-indigo-300 transition"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="hover:text-indigo-300 transition"><i class="fab fa-instagram"></i></a>
+                    <a href="#" class="hover:text-indigo-300 transition"><i class="fab fa-tiktok"></i></a>
+                    <a href="#" class="hover:text-indigo-300 transition"><i class="fab fa-youtube"></i></a>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 pt-8">
+                <div class="flex flex-col md:flex-row justify-between">
+                    <p class="text-gray-400 mb-4 md:mb-0">© 2023 ShortsGen. All rights reserved.</p>
+                    
+                    <div class="flex space-x-6">
+                        <a href="#" class="text-gray-400 hover:text-white transition">Terms</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">Privacy</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">Contact</a>
+                        <a href="#" class="text-gray-400 hover:text-white transition">Help</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Demo functionality
+        document.getElementById('convert-btn').addEventListener('click', function() {
+            const url = document.getElementById('youtube-url').value;
+            
+            if (!url) {
+                alert('Please enter a YouTube URL');
+                return;
+            }
+            
+            // Show processing section
+            document.getElementById('processing-section').classList.remove('hidden');
+            
+            // Simulate processing
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const statusText = document.getElementById('status-text');
+            const step2Icon = document.getElementById('step-2-icon');
+            const step3Icon = document.getElementById('step-3-icon');
+            
+            // Update video title
+            document.getElementById('video-title').textContent = "Demo Video - How to Make Perfect Shorts";
+            
+            // Simulate progress
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += 2;
+                progressBar.style.width = progress + '%';
+                progressText.textContent = progress + '%';
+                
+                if (progress === 20) {
+                    document.getElementById('step-1').classList.add('text-green-600');
+                } else if (progress === 50) {
+                    document.getElementById('step-2').classList.remove('text-gray-500');
+                    document.getElementById('step-2').classList.add('text-green-600');
+                    step2Icon.classList.remove('fa-spinner', 'animate-spin');
+                    step2Icon.classList.add('fa-check');
+                    statusText.textContent = "Generating short clips...";
+                } else if (progress === 85) {
+                    document.getElementById('step-3').classList.remove('text-gray-500');
+                    document.getElementById('step-3').classList.add('text-green-600');
+                    step3Icon.classList.remove('text-gray-500');
+                    step3Icon.classList.add('text-green-600');
+                    statusText.textContent = "Finalizing your shorts...";
+                } else if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        document.getElementById('processing-section').classList.add('hidden');
+                        document.getElementById('result-section').classList.remove('hidden');
+                        window.location.href = '#result-section';
+                    }, 500);
+                }
+            }, 100);
+        });
+        
+        // Toggle FAQ answers
+        const faqButtons = document.querySelectorAll('#faq button');
+        faqButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const answer = button.nextElementSibling;
+                const icon = button.querySelector('i');
+                
+                answer.classList.toggle('hidden');
+                icon.classList.toggle('rotate-180');
+            });
+        });
+        
+        // Simulate edit button click
+        const editButtons = document.querySelectorAll('.clip-card button:first-child');
+        editButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                document.getElementById('result-section').classList.add('hidden');
+                document.getElementById('editor-section').classList.remove('hidden');
+                window.location.href = '#editor-section';
+            });
+        });
+        
+        // Simulate play button click
+        const playButtons = document.querySelectorAll('.play-btn');
+        playButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const videoContainer = button.closest('.video-container');
+                const img = videoContainer.querySelector('img');
+                img.src = 'https://placehold.co/600x1067/video';
+            });
+        });
+    </script>
+</body>
+</html>
